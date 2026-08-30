@@ -1,24 +1,25 @@
-import { Loader2, Play, RefreshCw } from "lucide-react";
-import type { ReactNode } from "react";
+import { Loader2, Play, Plus, RefreshCw } from "lucide-react";
+import { useState, type ReactNode } from "react";
 
 import type { Agent, AgentStatus } from "../api/types";
+import { RunAgentModal } from "./RunAgentModal";
+import { PanelSectionHeader } from "./PanelSectionHeader";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 
 type AgentsPanelProps = {
   agents: Agent[];
   loading: boolean;
   error: string | null;
   onReload: () => void;
+  runSubmitting: boolean;
+  runError: string | null;
+  onRunAgent: (agentId: string, prompt: string) => Promise<void>;
+  onClearRunError: () => void;
 };
 
 export function AgentsPanel({
@@ -26,75 +27,142 @@ export function AgentsPanel({
   loading,
   error,
   onReload,
+  runSubmitting,
+  runError,
+  onRunAgent,
+  onClearRunError,
 }: AgentsPanelProps) {
+  const [runTarget, setRunTarget] = useState<Agent | null>(null);
+
   return (
-    <Card className="flex h-full flex-col">
-      <CardHeader className="flex-row items-center justify-between space-y-0 border-b border-border pb-4">
-        <div>
-          <CardTitle className="text-sm font-semibold uppercase tracking-wide">
-            Agents
-          </CardTitle>
-          <CardDescription>
-            {loading
-              ? "Loading workspace agents…"
-              : `${agents.length} agent${agents.length === 1 ? "" : "s"} available`}
-          </CardDescription>
+    <section className="flex h-full min-h-0 flex-col">
+      <PanelSectionHeader
+        title="Agents"
+        action={
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            disabled={loading}
+            onClick={onReload}
+            aria-label="Refresh agents"
+            className="text-muted-foreground"
+          >
+            {loading ? (
+              <Loader2 className="animate-spin" />
+            ) : (
+              <RefreshCw />
+            )}
+          </Button>
+        }
+      />
+
+      <ScrollArea className="min-h-0 flex-1">
+        <div className="space-y-3 p-4">
+          {loading ? (
+            <div className="space-y-3">
+              <Skeleton className="h-28 w-full rounded-lg bg-surface" />
+              <Skeleton className="h-28 w-full rounded-lg bg-surface" />
+            </div>
+          ) : null}
+
+          {!loading && error ? (
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          ) : null}
+
+          {!loading && !error && agents.length === 0 ? (
+            <PanelMessage>No agents in this workspace yet.</PanelMessage>
+          ) : null}
+
+          {!loading &&
+            agents.map((agent) => (
+              <AgentCard
+                key={agent.id}
+                agent={agent}
+                disabled={runSubmitting}
+                onRun={() => {
+                  onClearRunError();
+                  setRunTarget(agent);
+                }}
+              />
+            ))}
         </div>
+      </ScrollArea>
+
+      <footer className="shrink-0 border-t border-border p-4">
         <Button
           type="button"
           variant="outline"
-          size="sm"
-          disabled={loading}
-          onClick={onReload}
+          className="type-body h-10 w-full border-dashed border-border/80 text-muted-foreground"
+          disabled
+          title="Deploy flow coming next"
         >
-          {loading ? (
-            <Loader2 className="animate-spin" />
-          ) : (
-            <RefreshCw />
-          )}
-          Refresh
+          <Plus />
+          Deploy New Agent
         </Button>
-      </CardHeader>
+      </footer>
 
-      <CardContent className="flex-1 space-y-3 overflow-y-auto p-4">
-        {loading ? (
-          <div className="space-y-3">
-            <Skeleton className="h-24 w-full" />
-            <Skeleton className="h-24 w-full" />
+      <RunAgentModal
+        agent={runTarget}
+        open={runTarget !== null}
+        submitting={runSubmitting}
+        error={runError}
+        onClose={() => {
+          if (!runSubmitting) setRunTarget(null);
+        }}
+        onSubmit={async (prompt) => {
+          if (!runTarget) return;
+          await onRunAgent(runTarget.id, prompt);
+          setRunTarget(null);
+        }}
+      />
+    </section>
+  );
+}
+
+function AgentCard({
+  agent,
+  disabled,
+  onRun,
+}: {
+  agent: Agent;
+  disabled: boolean;
+  onRun: () => void;
+}) {
+  const isActive = agent.status === "ACTIVE";
+
+  return (
+    <article className="surface-card overflow-hidden">
+      <div className="space-y-4 p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 space-y-2">
+            <h3 className="type-title truncate">{agent.name}</h3>
+            <p className="type-body line-clamp-2">
+              {agent.description || "No description"}
+            </p>
           </div>
-        ) : null}
+          <AgentStatusBadge status={agent.status} />
+        </div>
 
-        {!loading && error ? (
-          <Alert variant="destructive">
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        ) : null}
-
-        {!loading && !error && agents.length === 0 ? (
-          <PanelMessage>No agents in this workspace yet.</PanelMessage>
-        ) : null}
-
-        {agents.map((agent) => (
-          <Card key={agent.id} size="sm" className="bg-muted/20">
-            <CardHeader className="flex-row items-start justify-between space-y-0">
-              <div>
-                <CardTitle className="text-base">{agent.name}</CardTitle>
-                <CardDescription className="mt-1">
-                  {agent.description || "No description"}
-                </CardDescription>
-              </div>
-              <AgentStatusBadge status={agent.status} />
-            </CardHeader>
-            <CardContent>
-              <Button type="button" size="sm" disabled title="Run modal coming next">
-                <Play />
-                Run
-              </Button>
-            </CardContent>
-          </Card>
-        ))}
-      </CardContent>
-    </Card>
+        <Button
+          type="button"
+          size="default"
+          variant={isActive ? "default" : "outline"}
+          className={cn(
+            "w-full",
+            isActive &&
+              "bg-foreground text-background hover:bg-foreground/90",
+          )}
+          disabled={!isActive || disabled}
+          onClick={onRun}
+        >
+          <Play />
+          Run
+        </Button>
+      </div>
+    </article>
   );
 }
 
@@ -104,18 +172,29 @@ function AgentStatusBadge({ status }: { status: AgentStatus }) {
 
   if (status === "ACTIVE") {
     return (
-      <Badge variant="secondary" className="border-primary/30 bg-primary/10 text-primary">
+      <Badge
+        variant="outline"
+        className="shrink-0 gap-1.5 border-emerald-500/25 bg-emerald-500/10 text-xs text-emerald-400"
+      >
+        <span className="size-1.5 rounded-full bg-emerald-400" />
         {label}
       </Badge>
     );
   }
 
-  return <Badge variant="outline">{label}</Badge>;
+  return (
+    <Badge
+      variant="outline"
+      className="shrink-0 text-xs text-muted-foreground"
+    >
+      {label}
+    </Badge>
+  );
 }
 
 function PanelMessage({ children }: { children: ReactNode }) {
   return (
-    <p className="rounded-lg border border-dashed border-border bg-muted/20 px-3 py-4 text-center text-sm text-muted-foreground">
+    <p className="type-body rounded-lg border border-dashed border-border/80 px-3 py-6 text-center">
       {children}
     </p>
   );

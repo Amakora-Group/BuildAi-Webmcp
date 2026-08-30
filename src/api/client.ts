@@ -3,8 +3,11 @@ import type {
   AccountMeResponse,
   Agent,
   ApiEnvelope,
+  Approval,
   HealthResponse,
   PaginatedResponse,
+  RunAgentResponse,
+  RunSummary,
   WorkspaceMembership,
 } from "./types";
 
@@ -118,6 +121,41 @@ export function createApiClient(context: ClientContext) {
       request<PaginatedResponse<Agent>>(
         `/api/agents?page=${page}&pageSize=${pageSize}`,
       ),
+    runAgent: (id: string, prompt: string) =>
+      request<RunAgentResponse>(`/api/agents/${id}/run`, {
+        method: "POST",
+        body: JSON.stringify({ input: prompt }),
+      }),
+    listRuns: (page = 1, pageSize = 10) =>
+      request<PaginatedResponse<RunSummary>>(
+        `/api/runs?page=${page}&pageSize=${pageSize}`,
+      ),
+    getRun: (id: string) => request<RunSummary>(`/api/runs/${id}`),
+    listPendingApprovals: async () => {
+      try {
+        const pending = await request<Approval[] | PaginatedResponse<Approval>>(
+          "/api/dashboard/pending-approvals",
+        );
+        if (Array.isArray(pending)) return pending;
+        return Array.isArray(pending.items) ? pending.items : [];
+      } catch (err) {
+        if (err instanceof ApiError && err.status !== 404) throw err;
+        const response = await request<PaginatedResponse<Approval>>(
+          "/api/approvals?status=PENDING&pageSize=10",
+        );
+        return Array.isArray(response.items) ? response.items : [];
+      }
+    },
+    approveApproval: (id: string) =>
+      request<Approval>(`/api/approvals/${id}/approve`, {
+        method: "POST",
+        body: JSON.stringify({}),
+      }),
+    rejectApproval: (id: string) =>
+      request<Approval>(`/api/approvals/${id}/reject`, {
+        method: "POST",
+        body: JSON.stringify({}),
+      }),
   };
 }
 

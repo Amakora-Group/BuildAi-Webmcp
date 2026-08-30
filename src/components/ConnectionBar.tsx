@@ -1,13 +1,25 @@
-import { Loader2, LogOut, RefreshCw, Wifi, WifiOff } from "lucide-react";
+import {
+  FolderOpen,
+  Loader2,
+  LogOut,
+  Radio,
+  WifiOff,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { ApiError } from "../api/client";
 import { getAccountWorkspace } from "../lib/account";
 import { WORKSPACE_LABEL } from "../lib/config";
 import { useSession } from "../context/SessionContext";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
 
 type ConnectionStatus = "checking" | "connected" | "error";
@@ -23,10 +35,8 @@ export function ConnectionBar() {
   } = useSession();
   const [status, setStatus] = useState<ConnectionStatus>("checking");
   const [healthError, setHealthError] = useState<string | null>(null);
-  const [checking, setChecking] = useState(false);
 
   async function checkHealth() {
-    setChecking(true);
     setStatus("checking");
     setHealthError(null);
 
@@ -42,8 +52,6 @@ export function ConnectionBar() {
             ? err.message
             : "Health check failed",
       );
-    } finally {
-      setChecking(false);
     }
   }
 
@@ -54,56 +62,69 @@ export function ConnectionBar() {
   const displayWorkspace =
     WORKSPACE_LABEL || workspaceName || getAccountWorkspace(account)?.name;
   const connectionError = sessionError ?? healthError;
-  const email = session?.user.email;
+  const email = session?.user.email ?? account?.account.email ?? "";
+  const initials = getInitials(email, account?.account.name);
 
   return (
-    <header className="border-b border-border bg-card/60 backdrop-blur-sm">
-      <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-4">
-        <div className="flex flex-col gap-1 text-left">
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-semibold tracking-tight">BuildAI Command</h1>
-            <ConnectionBadge status={status} />
+    <header className="shrink-0 border-b border-border bg-panel/90 backdrop-blur-md">
+      <div className="flex h-16 items-center justify-between gap-4 px-5">
+        <div className="flex min-w-0 items-center gap-3">
+          <h1 className="type-display truncate">BuildAI Command</h1>
+          <Separator orientation="vertical" className="hidden h-5 sm:block" />
+          <div className="hidden min-w-0 items-center gap-1.5 sm:flex">
+            <FolderOpen className="size-4 shrink-0 text-muted-foreground/70" />
+            <span className="type-body truncate text-muted-foreground">
+              {displayWorkspace ?? "Workspace"}
+            </span>
           </div>
-          <p className="text-sm text-muted-foreground">
-            {displayWorkspace ? `${displayWorkspace}` : "Workspace"}
-            {email ? ` · ${email}` : ""}
-          </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            type="button"
+        <div className="flex items-center gap-2">
+          <ConnectionBadge status={status} />
+          <Badge
             variant="outline"
-            size="sm"
-            disabled={checking}
-            onClick={() => void checkHealth()}
+            className="hidden border-border/80 text-muted-foreground sm:inline-flex"
           >
-            {checking ? (
-              <Loader2 className="animate-spin" />
-            ) : (
-              <RefreshCw />
-            )}
-            Recheck API
-          </Button>
-          <Separator orientation="vertical" className="hidden h-6 sm:block" />
+            WebMCP Active
+          </Badge>
           <Button
             type="button"
             variant="ghost"
-            size="sm"
-            onClick={() => void signOut()}
+            size="icon-sm"
+            className="hidden text-muted-foreground sm:inline-flex"
+            aria-label="Connection signal"
           >
-            <LogOut />
-            Sign out
+            <Radio />
           </Button>
+          <Separator orientation="vertical" className="hidden h-4 sm:block" />
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              aria-label="Account menu"
+            >
+              <Avatar size="sm">
+                <AvatarFallback className="bg-surface text-xs font-medium text-muted-foreground">
+                  {initials}
+                </AvatarFallback>
+              </Avatar>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52">
+              {email ? (
+                <div className="type-caption px-2 py-1.5">{email}</div>
+              ) : null}
+              <DropdownMenuItem onClick={() => void signOut()}>
+                <LogOut />
+                Sign out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
       {connectionError ? (
-        <div className="px-6 pb-4">
-          <Alert variant="destructive">
-            <WifiOff />
-            <AlertDescription>{connectionError}</AlertDescription>
-          </Alert>
+        <div className="type-body border-t border-destructive/20 bg-destructive/5 px-5 py-2.5 text-destructive">
+          <WifiOff className="mr-1.5 inline size-3.5 align-[-2px]" />
+          {connectionError}
         </div>
       ) : null}
     </header>
@@ -113,26 +134,45 @@ export function ConnectionBar() {
 function ConnectionBadge({ status }: { status: ConnectionStatus }) {
   if (status === "checking") {
     return (
-      <Badge variant="secondary">
-        <Loader2 className="animate-spin" />
-        Checking API
+      <Badge variant="outline" className="gap-1.5 text-muted-foreground">
+        <Loader2 className="size-3 animate-spin" />
+        Checking
       </Badge>
     );
   }
 
   if (status === "connected") {
     return (
-      <Badge variant="secondary" className="border-primary/30 bg-primary/10 text-primary">
-        <Wifi />
-        API connected
+      <Badge
+        variant="outline"
+        className="gap-1.5 border-emerald-500/25 bg-emerald-500/10 text-emerald-400"
+      >
+        <span className="size-1.5 rounded-full bg-emerald-400" />
+        Connected
       </Badge>
     );
   }
 
   return (
-    <Badge variant="destructive">
-      <WifiOff />
-      API error
+    <Badge variant="destructive" className="gap-1.5">
+      <WifiOff className="size-3" />
+      Disconnected
     </Badge>
   );
+}
+
+function getInitials(email: string, name: string | null | undefined) {
+  if (name) {
+    const parts = name.trim().split(/\s+/);
+    if (parts.length >= 2) {
+      return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+    }
+    return name.slice(0, 2).toUpperCase();
+  }
+
+  if (email) {
+    return email.slice(0, 2).toUpperCase();
+  }
+
+  return "U";
 }

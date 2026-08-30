@@ -52,3 +52,45 @@ export type ApiErrorPayload = {
 export type ApiEnvelope<T> =
   | { success: true; data: T; error: null }
   | { success: false; data: null; error: ApiErrorPayload | string | null };
+
+export type RunStatus =
+  | "QUEUED"
+  | "RUNNING"
+  | "AWAITING_APPROVAL"
+  | "BUDGET_BLOCKED"
+  | "SUCCEEDED"
+  | "FAILED"
+  | "CANCELED";
+
+export type RunAgentResponse = {
+  status: string;
+  run: RunSummary;
+};
+
+export type RunSummary = {
+  id: string;
+  status: RunStatus;
+  agentId?: string | null;
+  agent?: { id: string; name: string } | null;
+  inputText?: string;
+  outputPreview?: string;
+  output?: unknown;
+  error?: string | null;
+  rawLogs?: unknown[];
+  approvalId?: string | null;
+  createdAt?: string;
+  completedAt?: string | null;
+};
+
+export type ApprovalStatus = "PENDING" | "APPROVED" | "REJECTED" | "EDITED";
+
+export type Approval = {
+  id: string;
+  title: string;
+  description?: string | null;
+  status: ApprovalStatus;
+  agentId?: string | null;
+  agent?: { id: string; name: string } | null;
+  taskRunId?: string | null;
+  createdAt?: string;
+};

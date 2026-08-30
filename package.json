@@ -12,6 +12,7 @@
   "dependencies": {
     "@base-ui/react": "^1.7.0",
     "@fontsource-variable/geist": "^5.3.0",
+    "@fontsource-variable/geist-mono": "^5.3.0",
     "@mcp-b/global": "^5.0.1",
     "@mcp-b/react-webmcp": "^5.0.1",
     "@supabase/supabase-js": "^2.112.4",
