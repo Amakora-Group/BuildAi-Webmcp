@@ -4,6 +4,8 @@ Public WebMCP demo for the [BuildAI](https://github.com/Amakora-Group/buildai-ba
 
 Built for the [WebMCP Challenge](https://webmcp.devpost.com/) (submission deadline: September 3, 2026).
 
+**Live demo:** [buildai-command.vercel.app](https://buildai-command.vercel.app/)
+
 **Repo:** [github.com/Amakora-Group/BuildAi-Webmcp](https://github.com/Amakora-Group/BuildAi-Webmcp)
 
 ## What this is
@@ -91,7 +93,7 @@ Eight tools are registered in `src/webmcp/WebMCPTools.tsx`:
 
 The connection bar shows WebMCP status and tool count when `document.modelContext` is available.
 
-Test in the ChatGPT desktop in-app browser or Chrome 149+ with WebMCP enabled.
+Open the [live demo](https://buildai-command.vercel.app/) in the ChatGPT desktop in-app browser or Chrome 149+ with WebMCP enabled.
 
 ## Current status
 
@@ -105,10 +107,10 @@ Test in the ChatGPT desktop in-app browser or Chrome 149+ with WebMCP enabled.
 - Approve/reject flow for pending actions
 - Light/dark theme toggle
 - WebMCP tool registration (8 tools)
+- Deployed to Vercel at [buildai-command.vercel.app](https://buildai-command.vercel.app/)
 
 **Next**
 
-- Deploy to Vercel/Netlify
 - Judge quick-start section and demo video
 - End-to-end WebMCP testing in ChatGPT browser
 
