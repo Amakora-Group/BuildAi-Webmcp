@@ -8,18 +8,18 @@ Built for the [WebMCP Challenge](https://webmcp.devpost.com/) (submission deadli
 
 **BuildAI Command** is a live operations dashboard for workspace agents:
 
-| Panel | Purpose |
-| ----- | ------- |
-| **Agents** | List workspace agents, start runs |
-| **Activity** | Recent runs, status, output |
-| **Approvals** | Pending actions — approve or reject |
-| **Memory** *(optional)* | Search workspace memory |
+| Panel                   | Purpose                             |
+| ----------------------- | ----------------------------------- |
+| **Agents**              | List workspace agents, start runs   |
+| **Activity**            | Recent runs, status, output         |
+| **Approvals**           | Pending actions — approve or reject |
+| **Memory** _(optional)_ | Search workspace memory             |
 
 The UI and WebMCP tools share one API client. When ChatGPT calls a tool, the dashboard updates to match.
 
 ### Demo script
 
-> Run the Support Agent with: *"Summarize open tickets and send email to the client."* → approval appears → approve → run completes.
+> Run the Support Agent with: _"Summarize open tickets and send email to the client."_ → approval appears → approve → run completes.
 
 This is the scripted flow for judges, video, and hackathon testing.
 
@@ -52,12 +52,12 @@ Open `http://localhost:5173` and sign in with a BuildAI Supabase account.
 
 ### Environment variables
 
-| Variable | Description |
-| -------- | ----------- |
-| `VITE_API_BASE_URL` | BuildAI API base URL |
-| `VITE_SUPABASE_URL` | Supabase project URL |
-| `VITE_SUPABASE_ANON_KEY` | Supabase anon/publishable key |
-| `VITE_WORKSPACE_LABEL` | *(optional)* Label in the connection bar |
+| Variable                 | Description                              |
+| ------------------------ | ---------------------------------------- |
+| `VITE_API_BASE_URL`      | BuildAI API base URL                     |
+| `VITE_SUPABASE_URL`      | Supabase project URL                     |
+| `VITE_SUPABASE_ANON_KEY` | Supabase anon/publishable key            |
+| `VITE_WORKSPACE_LABEL`   | _(optional)_ Label in the connection bar |
 
 Env files must live in `webmcp-demo/`. Vite does not read `.env` from the parent repo. Restart the dev server after changing env vars.
 
@@ -74,16 +74,16 @@ Approve/reject requires **ADMIN** or **OWNER** on the workspace.
 
 ## WebMCP tools (planned)
 
-| Tool | Purpose |
-| ---- | ------- |
-| `list_agents` | List workspace agents |
-| `run_agent` | Start an agent run |
-| `get_run_status` | Run status and output |
-| `list_pending_approvals` | Pending approval items |
-| `approve_action` | Approve by ID |
-| `reject_action` | Reject by ID |
-| `search_memory` | Search memory hub |
-| `get_workspace_summary` | Workspace counts *(optional)* |
+| Tool                     | Purpose                       |
+| ------------------------ | ----------------------------- |
+| `list_agents`            | List workspace agents         |
+| `run_agent`              | Start an agent run            |
+| `get_run_status`         | Run status and output         |
+| `list_pending_approvals` | Pending approval items        |
+| `approve_action`         | Approve by ID                 |
+| `reject_action`          | Reject by ID                  |
+| `search_memory`          | Search memory hub             |
+| `get_workspace_summary`  | Workspace counts _(optional)_ |
 
 Test in the ChatGPT desktop in-app browser or Chrome 149+ with WebMCP enabled.
 
