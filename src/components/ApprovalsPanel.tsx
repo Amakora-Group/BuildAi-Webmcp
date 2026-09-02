@@ -1,6 +1,7 @@
 import { Bot, Check, FolderOpen, Loader2, X } from "lucide-react";
 
 import type { Approval } from "../api/types";
+import { approvalIsActionable } from "../lib/approvals";
 import { PanelSectionHeader } from "./PanelSectionHeader";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -14,8 +15,8 @@ type ApprovalsPanelProps = {
   actingId: string | null;
   error: string | null;
   agentNameFromApproval: (approval: Approval) => string;
-  onApprove: (id: string) => Promise<void>;
-  onReject: (id: string) => Promise<void>;
+  onApprove: (approval: Approval) => Promise<void>;
+  onReject: (approval: Approval) => Promise<void>;
 };
 
 export function ApprovalsPanel({
@@ -35,11 +36,11 @@ export function ApprovalsPanel({
         title="Approvals"
         action={
           pendingCount > 0 ? (
-            <Badge className="border-amber-500/25 bg-amber-500/12 text-xs text-amber-400 hover:bg-amber-500/12">
+            <Badge variant="default" className="text-xs">
               {pendingCount} Pending
             </Badge>
           ) : (
-            <Badge variant="outline" className="text-xs text-muted-foreground">
+            <Badge variant="secondary" className="text-xs text-muted-foreground">
               0 Pending
             </Badge>
           )
@@ -47,7 +48,7 @@ export function ApprovalsPanel({
       />
 
       <ScrollArea className="min-h-0 flex-1">
-        <div className="space-y-4 p-4">
+        <div className="space-y-4 p-3 sm:p-4">
           {error ? (
             <Alert variant="destructive">
               <AlertDescription>{error}</AlertDescription>
@@ -60,11 +61,14 @@ export function ApprovalsPanel({
 
           {pending.map((approval) => {
             const acting = actingId === approval.id;
+            const actionable = approvalIsActionable(approval);
 
             return (
-              <article key={approval.id} className="surface-card overflow-hidden">
-                <div className="border-l-[3px] border-l-amber-500 px-4 py-4">
-                  <p className="type-overline text-amber-400/90">Action Required</p>
+              <article key={approval.id} className="surface-card approval-card overflow-hidden">
+                <div className="px-4 py-4">
+                  <p className="type-overline">
+                    Action Required
+                  </p>
                   <h3 className="type-heading mt-2">{approval.title}</h3>
                   {approval.description ? (
                     <p className="type-body mt-2 text-muted-foreground">
@@ -77,33 +81,24 @@ export function ApprovalsPanel({
                   </p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2 border-t border-border/60 p-3.5">
+                <div className="grid grid-cols-2 gap-2 bg-background/40 p-3.5">
                   <Button
                     type="button"
                     variant="outline"
-                    disabled={acting}
-                    className="border-red-500/25 text-red-400 hover:bg-red-500/10 hover:text-red-300"
-                    onClick={() => void onReject(approval.id)}
+                    disabled={acting || !actionable}
+                    className="h-10 sm:h-9"
+                    onClick={() => void onReject(approval)}
                   >
-                    {acting ? (
-                      <Loader2 className="animate-spin" />
-                    ) : (
-                      <X />
-                    )}
+                    {acting ? <Loader2 className="animate-spin" /> : <X />}
                     Reject
                   </Button>
                   <Button
                     type="button"
-                    variant="outline"
-                    disabled={acting}
-                    className="border-emerald-500/25 text-emerald-400 hover:bg-emerald-500/10 hover:text-emerald-300"
-                    onClick={() => void onApprove(approval.id)}
+                    disabled={acting || !actionable}
+                    className="h-10 sm:h-9"
+                    onClick={() => void onApprove(approval)}
                   >
-                    {acting ? (
-                      <Loader2 className="animate-spin" />
-                    ) : (
-                      <Check />
-                    )}
+                    {acting ? <Loader2 className="animate-spin" /> : <Check />}
                     Approve
                   </Button>
                 </div>
@@ -112,9 +107,13 @@ export function ApprovalsPanel({
           })}
 
           {pendingCount === 0 && !loading ? (
-            <div className="flex flex-col items-center justify-center gap-2 py-8 text-center">
+            <div className="flex flex-col items-center justify-center gap-2 py-10 text-center">
               <FolderOpen className="size-5 text-muted-foreground/40" />
-              <p className="type-body">(none pending)</p>
+              <p className="type-body">No approvals waiting right now.</p>
+              <p className="type-caption max-w-[220px]">
+                Runs that need email or other sensitive actions will show up
+                here.
+              </p>
             </div>
           ) : null}
         </div>

@@ -6,7 +6,12 @@ import {
   Shield,
   XCircle,
 } from "lucide-react";
-import { useState, type ComponentType, type FormEvent, type ReactNode } from "react";
+import {
+  useState,
+  type ComponentType,
+  type FormEvent,
+  type ReactNode,
+} from "react";
 
 import { useSession, type AuthPhase } from "@/context/SessionContext";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -23,6 +28,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { cn } from "@/lib/utils";
 
 const AUTH_STEPS = [
@@ -67,14 +73,8 @@ function stepStatus(
 }
 
 export function AuthGate() {
-  const {
-    authPhase,
-    signIn,
-    signOut,
-    refreshAccount,
-    error,
-    session,
-  } = useSession();
+  const { authPhase, signIn, signOut, refreshAccount, error, session } =
+    useSession();
 
   if (authPhase === "initializing") {
     return <AuthShell phase={authPhase} />;
@@ -116,8 +116,9 @@ function AuthShell({
   children?: ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-background">
-      <div className="border-b border-border bg-card/40 px-6 py-4 lg:hidden">
+    <div className="relative min-h-screen bg-background">
+      <ThemeToggle className="absolute top-4 right-4 z-10 bg-background/80 shadow-sm backdrop-blur" />
+      <div className="bg-card/40 px-6 py-4 lg:hidden">
         <Badge variant="secondary" className="mb-2">
           BuildAI Command
         </Badge>
@@ -130,7 +131,7 @@ function AuthShell({
       </div>
 
       <div className="mx-auto grid min-h-[calc(100svh-88px)] max-w-6xl lg:min-h-screen lg:grid-cols-[1fr_420px]">
-        <aside className="hidden flex-col justify-between border-r border-border bg-card/40 p-10 lg:flex">
+        <aside className="hidden flex-col justify-between bg-card/40 p-10 lg:flex">
           <div>
             <Badge variant="secondary" className="mb-6">
               BuildAI Command
@@ -162,7 +163,9 @@ function AuthShell({
                       ) : null}
                     </div>
                     <div className="pb-6">
-                      <p className="font-medium text-foreground">{step.title}</p>
+                      <p className="font-medium text-foreground">
+                        {step.title}
+                      </p>
                       <p className="mt-1 text-sm text-muted-foreground">
                         {step.description}
                       </p>
@@ -207,7 +210,7 @@ function StepIcon({
 
 function InitializingCard() {
   return (
-    <Card className="w-full max-w-md border-border/80 shadow-lg">
+    <Card className="w-full max-w-md shadow-lg">
       <CardHeader>
         <CardTitle>Checking session</CardTitle>
         <CardDescription>
@@ -248,7 +251,7 @@ function SignInCard({
   }
 
   return (
-    <Card className="w-full max-w-md border-border/80 shadow-lg">
+    <Card className="w-full max-w-md shadow-lg">
       <CardHeader>
         <CardTitle>Sign in to BuildAI</CardTitle>
         <CardDescription>
@@ -257,7 +260,10 @@ function SignInCard({
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form className="space-y-4" onSubmit={(event) => void handleSubmit(event)}>
+        <form
+          className="space-y-4"
+          onSubmit={(event) => void handleSubmit(event)}
+        >
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input
@@ -316,7 +322,7 @@ function SignInCard({
 
 function LoadingAccountCard({ email }: { email?: string | null }) {
   return (
-    <Card className="w-full max-w-md border-border/80 shadow-lg">
+    <Card className="w-full max-w-md shadow-lg">
       <CardHeader>
         <CardTitle>Loading your workspace</CardTitle>
         <CardDescription>
@@ -325,7 +331,7 @@ function LoadingAccountCard({ email }: { email?: string | null }) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/30 px-4 py-3">
+        <div className="flex items-center gap-3 rounded-lg bg-muted/40 px-4 py-3">
           <Loader2 className="size-5 shrink-0 animate-spin text-primary" />
           <div>
             <p className="text-sm font-medium">Connecting to BuildAI API</p>
@@ -353,12 +359,12 @@ function AccountErrorCard({
   onSignOut: () => void;
 }) {
   return (
-    <Card className="w-full max-w-md border-border/80 shadow-lg">
+    <Card className="w-full max-w-md shadow-lg">
       <CardHeader>
         <CardTitle>Couldn&apos;t load workspace</CardTitle>
         <CardDescription>
-          Step 2 failed{email ? ` for ${email}` : ""}. You&apos;re signed in, but
-          we couldn&apos;t reach your account.
+          Step 2 failed{email ? ` for ${email}` : ""}. You&apos;re signed in,
+          but we couldn&apos;t reach your account.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -382,7 +388,6 @@ function AccountErrorCard({
     </Card>
   );
 }
-
 
 function formatAuthError(err: unknown): string {
   if (err instanceof Error) {

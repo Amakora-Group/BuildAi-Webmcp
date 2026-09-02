@@ -2,6 +2,7 @@ import { Loader2, Play, Plus, RefreshCw } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
 import type { Agent, AgentStatus } from "../api/types";
+import { agentStatusLabel, isRunnableAgentStatus } from "../lib/agents";
 import { RunAgentModal } from "./RunAgentModal";
 import { PanelSectionHeader } from "./PanelSectionHeader";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -58,7 +59,7 @@ export function AgentsPanel({
       />
 
       <ScrollArea className="min-h-0 flex-1">
-        <div className="space-y-3 p-4">
+        <div className="space-y-2.5 p-3 sm:p-4">
           {loading ? (
             <div className="space-y-3">
               <Skeleton className="h-28 w-full rounded-lg bg-surface" />
@@ -91,11 +92,11 @@ export function AgentsPanel({
         </div>
       </ScrollArea>
 
-      <footer className="shrink-0 border-t border-border p-4">
+      <footer className="shrink-0 bg-muted/20 p-3 sm:p-4">
         <Button
           type="button"
-          variant="outline"
-          className="type-body h-10 w-full border-dashed border-border/80 text-muted-foreground"
+          variant="secondary"
+          className="type-body h-10 w-full bg-surface/60 text-muted-foreground"
           disabled
           title="Deploy flow coming next"
         >
@@ -131,10 +132,10 @@ function AgentCard({
   disabled: boolean;
   onRun: () => void;
 }) {
-  const isActive = agent.status === "ACTIVE";
+  const isRunnable = isRunnableAgentStatus(agent.status);
 
   return (
-    <article className="surface-card overflow-hidden">
+    <article className="surface-card agent-card group overflow-hidden">
       <div className="space-y-4 p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 space-y-2">
@@ -149,13 +150,14 @@ function AgentCard({
         <Button
           type="button"
           size="default"
-          variant={isActive ? "default" : "outline"}
+        variant={isRunnable ? "default" : "secondary"}
           className={cn(
-            "w-full",
-            isActive &&
-              "bg-foreground text-background hover:bg-foreground/90",
+            "h-10 w-full transition-all sm:h-9",
+            isRunnable
+              ? "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90"
+              : "bg-background/60 text-muted-foreground",
           )}
-          disabled={!isActive || disabled}
+          disabled={!isRunnable || disabled}
           onClick={onRun}
         >
           <Play />
@@ -167,16 +169,15 @@ function AgentCard({
 }
 
 function AgentStatusBadge({ status }: { status: AgentStatus }) {
-  const label =
-    status === "ACTIVE" ? "Active" : status === "DRAFT" ? "Draft" : status;
+  const label = agentStatusLabel(status);
 
-  if (status === "ACTIVE") {
+  if (isRunnableAgentStatus(status)) {
     return (
       <Badge
-        variant="outline"
-        className="shrink-0 gap-1.5 border-emerald-500/25 bg-emerald-500/10 text-xs text-emerald-400"
+        variant="secondary"
+        className="shrink-0 gap-1.5 text-xs"
       >
-        <span className="size-1.5 rounded-full bg-emerald-400" />
+        <span className="status-dot" />
         {label}
       </Badge>
     );
@@ -184,7 +185,7 @@ function AgentStatusBadge({ status }: { status: AgentStatus }) {
 
   return (
     <Badge
-      variant="outline"
+      variant="secondary"
       className="shrink-0 text-xs text-muted-foreground"
     >
       {label}
@@ -194,7 +195,7 @@ function AgentStatusBadge({ status }: { status: AgentStatus }) {
 
 function PanelMessage({ children }: { children: ReactNode }) {
   return (
-    <p className="type-body rounded-lg border border-dashed border-border/80 px-3 py-6 text-center">
+    <p className="type-body rounded-lg bg-muted/40 px-3 py-6 text-center">
       {children}
     </p>
   );

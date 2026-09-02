@@ -15,7 +15,7 @@ export function ConfigError() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-6 py-12">
-      <Card className="w-full max-w-lg border-destructive/30 shadow-lg">
+      <Card className="w-full max-w-lg shadow-lg">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <AlertTriangle className="size-5 text-destructive" />
@@ -33,7 +33,7 @@ export function ConfigError() {
               Copy these variables into <code className="rounded bg-muted px-1 py-0.5">webmcp-demo/.env.local</code>.
             </AlertDescription>
           </Alert>
-          <pre className="overflow-x-auto rounded-md border border-border bg-muted/30 p-4 font-mono text-xs">
+          <pre className="overflow-x-auto rounded-md bg-muted/40 p-4 font-mono text-xs">
 {`VITE_API_BASE_URL=https://your-api.example.com
 VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_ANON_KEY=your-anon-key`}

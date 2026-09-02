@@ -1,11 +1,19 @@
-import { Loader2, Play, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { Loader2, Play } from "lucide-react";
+import { useState } from "react";
 
 import type { Agent } from "../api/types";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { cn } from "@/lib/utils";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export const DEMO_RUN_PROMPT =
   "Summarize open tickets and send email to the client with the summary.";
@@ -27,76 +35,41 @@ export function RunAgentModal({
   onClose,
   onSubmit,
 }: RunAgentModalProps) {
-  const dialogRef = useRef<HTMLDialogElement>(null);
   const [prompt, setPrompt] = useState(DEMO_RUN_PROMPT);
-
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    if (!dialog) return;
-
-    if (open && !dialog.open) {
-      dialog.showModal();
-      setPrompt(DEMO_RUN_PROMPT);
-    }
-
-    if (!open && dialog.open) {
-      dialog.close();
-    }
-  }, [open]);
 
   if (!agent) return null;
 
   return (
-    <dialog
-      ref={dialogRef}
-      className={cn(
-        "fixed inset-0 z-50 m-auto w-[min(100%-2rem,480px)] rounded-xl border border-border bg-panel p-0 text-foreground shadow-2xl backdrop:bg-black/60",
-        "open:animate-in open:fade-in-0",
-      )}
-      onCancel={(event) => {
-        event.preventDefault();
-        if (!submitting) onClose();
-      }}
-      onClose={onClose}
-    >
+    <Dialog open={open} onOpenChange={(next) => { if (!next && !submitting) { setPrompt(DEMO_RUN_PROMPT); onClose(); } }}>
+      <DialogContent className="max-w-lg border border-border bg-panel sm:max-w-lg">
       <form
-        className="flex flex-col"
+        className="contents"
         onSubmit={(event) => {
           event.preventDefault();
           if (!prompt.trim() || submitting) return;
           void onSubmit(prompt.trim());
         }}
       >
-        <div className="flex items-start justify-between gap-3 border-b border-border/60 px-5 py-4">
-          <div className="min-w-0">
-            <p className="type-overline text-muted-foreground">Run agent</p>
-            <h2 className="type-heading mt-1 truncate">{agent.name}</h2>
-          </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            disabled={submitting}
-            onClick={onClose}
-            aria-label="Close"
-            className="shrink-0 text-muted-foreground"
-          >
-            <X />
-          </Button>
-        </div>
+        <DialogHeader>
+          <DialogTitle>Run {agent.name}</DialogTitle>
+          <DialogDescription>Describe the outcome you want this agent to produce.</DialogDescription>
+        </DialogHeader>
 
-        <div className="space-y-3 px-5 py-4">
+        <div className="space-y-3 py-2">
           <div className="space-y-2">
-            <Label htmlFor="run-prompt" className="type-body text-muted-foreground">
+            <Label
+              htmlFor="run-prompt"
+              className="type-body text-muted-foreground"
+            >
               Prompt
             </Label>
-            <textarea
+            <Textarea
               id="run-prompt"
               value={prompt}
               onChange={(event) => setPrompt(event.target.value)}
               rows={4}
               disabled={submitting}
-              className="type-body w-full resize-y rounded-lg border border-border/80 bg-surface px-3 py-2.5 outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-60"
+              className="type-body min-h-28 resize-y border-0 bg-surface shadow-none ring-0 focus-visible:ring-2"
             />
           </div>
 
@@ -107,25 +80,27 @@ export function RunAgentModal({
           ) : null}
         </div>
 
-        <div className="flex justify-end gap-2 border-t border-border/60 px-5 py-4">
+        <DialogFooter className="-mx-4 -mb-4 border-0 bg-muted/35">
           <Button
             type="button"
-            variant="outline"
+            variant="ghost"
             disabled={submitting}
             onClick={onClose}
+            className="h-10 sm:h-8"
           >
             Cancel
           </Button>
           <Button
             type="submit"
             disabled={submitting || !prompt.trim()}
-            className="bg-foreground text-background hover:bg-foreground/90"
+            className="h-10 bg-foreground text-background hover:bg-foreground/90 sm:h-8"
           >
             {submitting ? <Loader2 className="animate-spin" /> : <Play />}
             Run
           </Button>
-        </div>
+        </DialogFooter>
       </form>
-    </dialog>
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -1,15 +1,21 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AuthGate } from "./components/AuthGate";
 import { ActivityPanel } from "./components/ActivityPanel";
 import { AgentsPanel } from "./components/AgentsPanel";
 import { ApprovalsPanel } from "./components/ApprovalsPanel";
 import { ConfigError } from "./components/ConfigError";
 import { ConnectionBar } from "./components/ConnectionBar";
+import {
+  DashboardMobileNav,
+  type MobileDashboardTab,
+} from "./components/DashboardMobileNav";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { cn } from "@/lib/utils";
+import { WebMCPProvider } from "./context/WebMCPContext";
 import { useSession } from "./context/SessionContext";
 import { useAgents } from "./hooks/useAgents";
-import { useApprovals } from "./hooks/useApprovals";
-import { useRunAgent, useRuns } from "./hooks/useRuns";
+import { useDashboard } from "./hooks/useDashboard";
+import type { Approval } from "./api/types";
 import { isConfigValid } from "./lib/config";
 
 function App() {
@@ -35,109 +41,154 @@ function AppContent() {
 }
 
 function Dashboard() {
-  const { agents, loading: agentsLoading, error: agentsError, reload: reloadAgents } =
-    useAgents();
-  const [activeRunId, setActiveRunId] = useState<string | null>(null);
-
-  const handleRunStarted = useCallback((runId: string) => {
-    setActiveRunId(runId);
-  }, []);
-
   const {
+    agents,
+    loading: agentsLoading,
+    error: agentsError,
+    reload: reloadAgents,
+  } = useAgents();
+  const [mobileTab, setMobileTab] = useState<MobileDashboardTab>("activity");
+  const pendingCountRef = useRef(0);
+  const mobileNavReadyRef = useRef(false);
+
+  const dashboard = useDashboard();
+  const {
+    activeRunId,
     runs,
-    loading: runsLoading,
-    error: runsError,
-    hasActiveRun,
-    reload: reloadRuns,
-    refreshActiveRun,
-  } = useRuns(activeRunId);
-
-  const {
-    runAgent,
-    submitting: runSubmitting,
-    error: runError,
-    clearError: clearRunError,
-  } = useRunAgent((runId) => {
-    handleRunStarted(runId);
-    void reloadRuns();
-  });
-
-  const {
     pending,
-    loading: approvalsLoading,
+    loading: runsLoading,
+    refreshing,
+    runSubmitting,
+    runError,
     actingId,
-    error: approvalsError,
+    error: dashboardError,
+    hasActiveRun,
+    sync,
+    runAgent,
     approve,
     reject,
     agentNameFromApproval,
-  } = useApprovals(hasActiveRun);
+    clearRunError,
+  } = dashboard;
+
+  useEffect(() => {
+    const previousCount = pendingCountRef.current;
+    if (
+      mobileNavReadyRef.current &&
+      pending.length > previousCount &&
+      pending.length > 0
+    ) {
+      setMobileTab("approvals");
+    }
+
+    pendingCountRef.current = pending.length;
+    mobileNavReadyRef.current = true;
+  }, [pending.length]);
+
+  const handleRunStarted = useCallback(() => {
+    setMobileTab("activity");
+  }, []);
 
   const handleRunAgent = useCallback(
     async (agentId: string, prompt: string) => {
       await runAgent(agentId, prompt);
+      handleRunStarted();
     },
-    [runAgent],
+    [handleRunStarted, runAgent],
   );
 
   const handleApprove = useCallback(
-    async (id: string) => {
-      await approve(id);
-      void refreshActiveRun();
-      void reloadRuns();
+    async (approval: Approval) => {
+      await approve(approval);
     },
-    [approve, refreshActiveRun, reloadRuns],
+    [approve],
   );
 
   const handleReject = useCallback(
-    async (id: string) => {
-      await reject(id);
-      void refreshActiveRun();
-      void reloadRuns();
+    async (approval: Approval) => {
+      await reject(approval);
     },
-    [reject, refreshActiveRun, reloadRuns],
+    [reject],
   );
 
+  const dashboardActions = useMemo(
+    () => ({
+      setActiveRunId: dashboard.setActiveRunId,
+      reloadAgents,
+      sync: () => sync({ showRefresh: true }),
+    }),
+    [dashboard.setActiveRunId, reloadAgents, sync],
+  );
+
+  const runsError = dashboardError;
+  const approvalsError = dashboardError;
+
   return (
-    <div className="flex h-svh flex-col bg-background text-foreground">
-      <ConnectionBar />
+    <WebMCPProvider actions={dashboardActions}>
+      <div className="app-shell flex h-svh flex-col bg-background text-foreground">
+        <ConnectionBar />
 
-      <main className="grid min-h-0 flex-1 lg:grid-cols-[minmax(260px,320px)_1fr_minmax(260px,320px)]">
-        <div className="min-h-0 border-r border-border bg-panel">
-          <AgentsPanel
-            agents={agents}
-            loading={agentsLoading}
-            error={agentsError}
-            onReload={() => void reloadAgents()}
-            runSubmitting={runSubmitting}
-            runError={runError}
-            onRunAgent={handleRunAgent}
-            onClearRunError={clearRunError}
-          />
-        </div>
+        <main className="dashboard-grid grid min-h-0 flex-1 gap-3 p-3 lg:grid-cols-[minmax(250px,300px)_minmax(420px,1fr)_minmax(280px,340px)] lg:gap-4 lg:p-4">
+          <div
+            className={cn(
+              "dashboard-panel min-h-0 overflow-hidden",
+              mobileTab !== "agents" && "hidden lg:block",
+            )}
+          >
+            <AgentsPanel
+              agents={agents}
+              loading={agentsLoading}
+              error={agentsError}
+              onReload={() => void reloadAgents()}
+              runSubmitting={runSubmitting}
+              runError={runError}
+              onRunAgent={handleRunAgent}
+              onClearRunError={clearRunError}
+            />
+          </div>
 
-        <div className="min-h-0 border-r border-border bg-background">
-          <ActivityPanel
-            runs={runs}
-            activeRunId={activeRunId}
-            loading={runsLoading}
-            error={runsError}
-            onReload={() => void reloadRuns()}
-          />
-        </div>
+          <div
+            className={cn(
+              "dashboard-panel dashboard-panel-primary min-h-0 min-w-0 overflow-hidden",
+              mobileTab !== "activity" && "hidden lg:block",
+            )}
+          >
+            <ActivityPanel
+              runs={runs}
+              activeRunId={activeRunId}
+              loading={runsLoading || refreshing}
+              error={runsError}
+              onReload={() => void sync({ showRefresh: true })}
+              onSelectRun={dashboard.setActiveRunId}
+            />
+          </div>
 
-        <div className="min-h-0 bg-panel">
-          <ApprovalsPanel
-            pending={pending}
-            loading={approvalsLoading}
-            actingId={actingId}
-            error={approvalsError}
-            agentNameFromApproval={agentNameFromApproval}
-            onApprove={handleApprove}
-            onReject={handleReject}
-          />
-        </div>
-      </main>
-    </div>
+          <div
+            className={cn(
+              "dashboard-panel min-h-0 overflow-hidden",
+              mobileTab !== "approvals" && "hidden lg:block",
+            )}
+          >
+            <ApprovalsPanel
+              pending={pending}
+              loading={runsLoading}
+              actingId={actingId}
+              error={approvalsError}
+              agentNameFromApproval={agentNameFromApproval}
+              onApprove={handleApprove}
+              onReject={handleReject}
+            />
+          </div>
+        </main>
+
+        <DashboardMobileNav
+          activeTab={mobileTab}
+          onTabChange={setMobileTab}
+          pendingCount={pending.length}
+          hasActiveRun={hasActiveRun}
+        />
+      </div>
+    </WebMCPProvider>
   );
 }
 

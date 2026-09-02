@@ -18,7 +18,7 @@ export function PanelSectionHeader({
   return (
     <header
       className={cn(
-        "flex shrink-0 items-center justify-between border-b border-border px-5 py-4",
+        "panel-header flex shrink-0 items-center justify-between gap-3 px-4 py-3.5 sm:gap-4 sm:px-5 sm:py-4",
         className,
       )}
     >

@@ -1,16 +1,17 @@
 import {
+  Blocks,
   FolderOpen,
   Loader2,
   LogOut,
   Radio,
   WifiOff,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 
-import { ApiError } from "../api/client";
 import { getAccountWorkspace } from "../lib/account";
 import { WORKSPACE_LABEL } from "../lib/config";
 import { useSession } from "../context/SessionContext";
+import { useWebMCPStatus } from "../context/WebMCPContext";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,9 +21,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Separator } from "@/components/ui/separator";
-
-type ConnectionStatus = "checking" | "connected" | "error";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export function ConnectionBar() {
   const {
@@ -33,45 +32,26 @@ export function ConnectionBar() {
     error: sessionError,
     signOut,
   } = useSession();
-  const [status, setStatus] = useState<ConnectionStatus>("checking");
-  const [healthError, setHealthError] = useState<string | null>(null);
-
-  async function checkHealth() {
-    setStatus("checking");
-    setHealthError(null);
-
-    try {
-      await api.getHealth();
-      setStatus("connected");
-    } catch (err) {
-      setStatus("error");
-      setHealthError(
-        err instanceof ApiError
-          ? err.message
-          : err instanceof Error
-            ? err.message
-            : "Health check failed",
-      );
-    }
-  }
-
-  useEffect(() => {
-    void checkHealth();
-  }, [api]);
+  const { isActive: webmcpActive, toolCount } = useWebMCPStatus();
+  const health = useQuery({ queryKey: ["health"], queryFn: () => api.getHealth(), retry: 1 });
+  const status = health.isPending ? "checking" : health.isError ? "error" : "connected";
 
   const displayWorkspace =
     WORKSPACE_LABEL || workspaceName || getAccountWorkspace(account)?.name;
-  const connectionError = sessionError ?? healthError;
+  const connectionError = sessionError ?? (health.error instanceof Error ? health.error.message : null);
   const email = session?.user.email ?? account?.account.email ?? "";
   const initials = getInitials(email, account?.account.name);
 
   return (
-    <header className="shrink-0 border-b border-border bg-panel/90 backdrop-blur-md">
-      <div className="flex h-16 items-center justify-between gap-4 px-5">
-        <div className="flex min-w-0 items-center gap-3">
-          <h1 className="type-display truncate">BuildAI Command</h1>
-          <Separator orientation="vertical" className="hidden h-5 sm:block" />
-          <div className="hidden min-w-0 items-center gap-1.5 sm:flex">
+    <header className="command-header relative z-10 shrink-0 pt-[env(safe-area-inset-top)]">
+      <div className="flex h-16 items-center justify-between gap-3 px-4 sm:h-[72px] sm:gap-4 sm:px-6">
+        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+          <div className="brand-mark"><Blocks className="size-4" /></div>
+          <div className="min-w-0">
+            <h1 className="type-display truncate text-base sm:text-lg">BuildAI Command</h1>
+            <p className="hidden text-[11px] font-medium tracking-[0.12em] text-muted-foreground uppercase sm:block">Agent operations console</p>
+          </div>
+          <div className="hidden min-w-0 items-center gap-1.5 md:flex">
             <FolderOpen className="size-4 shrink-0 text-muted-foreground/70" />
             <span className="type-body truncate text-muted-foreground">
               {displayWorkspace ?? "Workspace"}
@@ -79,24 +59,35 @@ export function ConnectionBar() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <ConnectionBadge status={status} />
-          <Badge
-            variant="outline"
-            className="hidden border-border/80 text-muted-foreground sm:inline-flex"
-          >
-            WebMCP Active
-          </Badge>
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+          <ThemeToggle />
+          <ConnectionBadge status={status} compact />
+          {webmcpActive ? (
+            <Badge
+              variant="secondary"
+              className="hidden gap-1.5 text-xs md:inline-flex"
+            >
+              <span className="status-dot" />
+              WebMCP · {toolCount} tools
+            </Badge>
+          ) : (
+            <Badge
+              variant="secondary"
+              className="hidden text-xs text-muted-foreground md:inline-flex"
+              title="Open in ChatGPT or Chrome 149+ with WebMCP to enable tools"
+            >
+              WebMCP Unavailable
+            </Badge>
+          )}
           <Button
             type="button"
             variant="ghost"
             size="icon-sm"
-            className="hidden text-muted-foreground sm:inline-flex"
+            className="hidden text-muted-foreground md:inline-flex"
             aria-label="Connection signal"
           >
             <Radio />
           </Button>
-          <Separator orientation="vertical" className="hidden h-4 sm:block" />
           <DropdownMenu>
             <DropdownMenuTrigger
               className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -112,6 +103,12 @@ export function ConnectionBar() {
               {email ? (
                 <div className="type-caption px-2 py-1.5">{email}</div>
               ) : null}
+              {displayWorkspace ? (
+                <div className="type-caption flex items-center gap-1.5 px-2 py-1.5 text-muted-foreground md:hidden">
+                  <FolderOpen className="size-3.5 shrink-0" />
+                  <span className="truncate">{displayWorkspace}</span>
+                </div>
+              ) : null}
               <DropdownMenuItem onClick={() => void signOut()}>
                 <LogOut />
                 Sign out
@@ -121,8 +118,17 @@ export function ConnectionBar() {
         </div>
       </div>
 
+      {displayWorkspace ? (
+        <div className="flex min-w-0 items-center gap-1.5 bg-muted/20 px-4 py-2 md:hidden">
+          <FolderOpen className="size-3.5 shrink-0 text-muted-foreground/70" />
+          <span className="type-caption truncate text-muted-foreground">
+            {displayWorkspace}
+          </span>
+        </div>
+      ) : null}
+
       {connectionError ? (
-        <div className="type-body border-t border-destructive/20 bg-destructive/5 px-5 py-2.5 text-destructive">
+        <div className="type-body bg-destructive/5 px-4 py-2.5 text-destructive sm:px-5">
           <WifiOff className="mr-1.5 inline size-3.5 align-[-2px]" />
           {connectionError}
         </div>
@@ -131,12 +137,18 @@ export function ConnectionBar() {
   );
 }
 
-function ConnectionBadge({ status }: { status: ConnectionStatus }) {
+function ConnectionBadge({
+  status,
+  compact = false,
+}: {
+  status: "checking" | "connected" | "error";
+  compact?: boolean;
+}) {
   if (status === "checking") {
     return (
-      <Badge variant="outline" className="gap-1.5 text-muted-foreground">
+      <Badge variant="secondary" className="gap-1.5 text-muted-foreground">
         <Loader2 className="size-3 animate-spin" />
-        Checking
+        {compact ? null : "Checking"}
       </Badge>
     );
   }
@@ -144,19 +156,20 @@ function ConnectionBadge({ status }: { status: ConnectionStatus }) {
   if (status === "connected") {
     return (
       <Badge
-        variant="outline"
-        className="gap-1.5 border-emerald-500/25 bg-emerald-500/10 text-emerald-400"
+        variant="secondary"
+        className="gap-1.5"
+        title={compact ? "Connected" : undefined}
       >
-        <span className="size-1.5 rounded-full bg-emerald-400" />
-        Connected
+        <span className="status-dot" />
+        {compact ? null : "Connected"}
       </Badge>
     );
   }
 
   return (
-    <Badge variant="destructive" className="gap-1.5">
+    <Badge variant="destructive" className="gap-1.5" title={compact ? "Disconnected" : undefined}>
       <WifiOff className="size-3" />
-      Disconnected
+      {compact ? null : "Disconnected"}
     </Badge>
   );
 }
