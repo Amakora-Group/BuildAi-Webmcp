@@ -1,4 +1,4 @@
-import type { RunStatus, RunSummary } from "../api/types";
+import type { RunStatus, RunSummary, RunAgentResponse } from "../api/types";
 
 const TERMINAL_STATUSES: RunStatus[] = [
   "SUCCEEDED",
@@ -81,4 +81,37 @@ export function outputTextFromRun(run: RunSummary) {
   }
 
   return undefined;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function runIsStaleQueued(run: RunSummary, staleMs = 20_000) {
+  if (run.status !== "QUEUED") return false;
+  if (!run.createdAt) return false;
+  return Date.now() - Date.parse(run.createdAt) > staleMs;
+}
+
+export function hasInFlightRuns(runs: RunSummary[]) {
+  return runs.some((run) => isActiveRunStatus(run.status));
+}
+
+export function countStaleQueuedRuns(runs: RunSummary[]) {
+  return runs.filter((run) => runIsStaleQueued(run)).length;
+}
+
+export function extractRunFromResponse(response: RunAgentResponse | RunSummary): RunSummary {
+  if (isRecord(response) && "run" in response) {
+    const run = response.run;
+    if (isRecord(run) && typeof run.id === "string") {
+      return run as RunSummary;
+    }
+  }
+
+  if (isRecord(response) && "id" in response && typeof response.id === "string") {
+    return response as RunSummary;
+  }
+
+  throw new Error("Invalid task run response from API");
 }

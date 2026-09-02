@@ -4,12 +4,15 @@ import type {
   Agent,
   ApiEnvelope,
   Approval,
+  DashboardSummary,
   HealthResponse,
+  MemoryItem,
   PaginatedResponse,
   RunAgentResponse,
   RunSummary,
   WorkspaceMembership,
 } from "./types";
+import { extractRunFromResponse } from "../lib/runs";
 
 export class ApiError extends Error {
   status: number;
@@ -121,41 +124,55 @@ export function createApiClient(context: ClientContext) {
       request<PaginatedResponse<Agent>>(
         `/api/agents?page=${page}&pageSize=${pageSize}`,
       ),
-    runAgent: (id: string, prompt: string) =>
-      request<RunAgentResponse>(`/api/agents/${id}/run`, {
+    runAgent: async (agentId: string, prompt: string) => {
+      const response = await request<RunAgentResponse | RunSummary>("/api/task-runs", {
         method: "POST",
-        body: JSON.stringify({ input: prompt }),
-      }),
+        body: JSON.stringify({
+          agentId,
+          input: { task: prompt },
+          triggerSource: "WEB_APP",
+        }),
+      });
+      return { run: extractRunFromResponse(response) };
+    },
     listRuns: (page = 1, pageSize = 10) =>
       request<PaginatedResponse<RunSummary>>(
         `/api/runs?page=${page}&pageSize=${pageSize}`,
       ),
     getRun: (id: string) => request<RunSummary>(`/api/runs/${id}`),
-    listPendingApprovals: async () => {
-      try {
-        const pending = await request<Approval[] | PaginatedResponse<Approval>>(
-          "/api/dashboard/pending-approvals",
-        );
-        if (Array.isArray(pending)) return pending;
-        return Array.isArray(pending.items) ? pending.items : [];
-      } catch (err) {
-        if (err instanceof ApiError && err.status !== 404) throw err;
-        const response = await request<PaginatedResponse<Approval>>(
-          "/api/approvals?status=PENDING&pageSize=10",
-        );
-        return Array.isArray(response.items) ? response.items : [];
-      }
+    retryRun: async (id: string) => {
+      const response = await request<RunAgentResponse | RunSummary>(
+        `/api/runs/${id}/retry`,
+        {
+          method: "POST",
+          body: JSON.stringify({}),
+        },
+      );
+      return { run: extractRunFromResponse(response) };
     },
-    approveApproval: (id: string) =>
+    listPendingApprovals: async () => {
+      const response = await request<PaginatedResponse<Approval>>(
+        "/api/approvals?status=PENDING&pageSize=20",
+      );
+      return Array.isArray(response.items) ? response.items : [];
+    },
+    getApproval: (id: string) => request<Approval>(`/api/approvals/${id}`),
+    approveApproval: (id: string, body: Record<string, unknown> = {}) =>
       request<Approval>(`/api/approvals/${id}/approve`, {
         method: "POST",
-        body: JSON.stringify({}),
+        body: JSON.stringify(body),
       }),
     rejectApproval: (id: string) =>
       request<Approval>(`/api/approvals/${id}/reject`, {
         method: "POST",
         body: JSON.stringify({}),
       }),
+    searchMemory: (query: string) =>
+      request<MemoryItem[]>(
+        `/api/memory/search?q=${encodeURIComponent(query)}`,
+      ),
+    getWorkspaceSummary: () =>
+      request<DashboardSummary>("/api/dashboard/summary"),
   };
 }
 

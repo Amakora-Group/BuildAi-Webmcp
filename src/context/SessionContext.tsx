@@ -50,20 +50,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [accountLoading, setAccountLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const sessionRef = useRef<Session | null>(null);
+  const workspaceIdRef = useRef<string | null>(null);
 
-  const getToken = useCallback(async () => session?.access_token ?? null, [session]);
-  const getWorkspaceId = useCallback(
-    () => getAccountWorkspace(account)?.id ?? null,
-    [account],
+  const [api] = useState(() =>
+    createApiClient({
+      getToken: async () => sessionRef.current?.access_token ?? null,
+      getWorkspaceId: () => workspaceIdRef.current,
+    }),
   );
-
-  const api = useMemo(
-    () => createApiClient({ getToken, getWorkspaceId }),
-    [getToken, getWorkspaceId],
-  );
-
-  const apiRef = useRef(api);
-  apiRef.current = api;
 
   const refreshAccount = useCallback(async () => {
     if (!session?.access_token) {
@@ -75,7 +70,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setAccountLoading(true);
 
     try {
-      const me = await loadSessionAccount(apiRef.current);
+      const me = await loadSessionAccount(api);
+      workspaceIdRef.current = getAccountWorkspace(me)?.id ?? null;
       setAccount(me);
       setError(null);
     } catch (err) {
@@ -86,7 +82,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     } finally {
       setAccountLoading(false);
     }
-  }, [session?.access_token]);
+  }, [api, session?.access_token]);
 
   useEffect(() => {
     if (!isConfigValid()) {
@@ -100,6 +96,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
     supabase.auth.getSession().then(({ data }) => {
       if (!active) return;
+      sessionRef.current = data.session;
       setSession(data.session);
       setLoading(false);
     });
@@ -107,8 +104,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      sessionRef.current = nextSession;
       setSession(nextSession);
       if (!nextSession) {
+        workspaceIdRef.current = null;
         setAccount(null);
         setError(null);
         setAccountLoading(false);
@@ -153,6 +152,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(async () => {
     await getSupabase().auth.signOut();
+    sessionRef.current = null;
+    workspaceIdRef.current = null;
     setAccount(null);
     setError(null);
     setAccountLoading(false);

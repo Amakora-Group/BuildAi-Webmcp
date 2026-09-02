@@ -1,4 +1,4 @@
-export type AgentStatus = "ACTIVE" | "DRAFT" | "ARCHIVED";
+export type AgentStatus = "DRAFT" | "PUBLISHED" | "ARCHIVED" | "ACTIVE";
 
 export type Agent = {
   id: string;
@@ -63,8 +63,10 @@ export type RunStatus =
   | "CANCELED";
 
 export type RunAgentResponse = {
-  status: string;
-  run: RunSummary;
+  status?: string;
+  run?: RunSummary;
+  approval?: Approval | null;
+  output?: unknown;
 };
 
 export type RunSummary = {
@@ -93,4 +95,34 @@ export type Approval = {
   agent?: { id: string; name: string } | null;
   taskRunId?: string | null;
   createdAt?: string;
+};
+
+export type MemoryItem = {
+  id: string;
+  text?: string;
+  type?: string;
+  scope?: string;
+  sensitivity?: string | null;
+  status?: string;
+  agent?: { id: string; name: string } | null;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export type DashboardSummary = {
+  activeAgents: number;
+  activeWorkflows: number;
+  memoryItems: number;
+  workflowRuns: number;
+  pendingApprovals: number;
+  liveDeployments: number;
+  credits?: {
+    used: number;
+    limit: number;
+    remaining: number;
+  };
+  providerSpend?: {
+    amount: number;
+    currency: string;
+  };
 };
